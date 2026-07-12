@@ -37,10 +37,11 @@ jobs:
 
       - name: 💾 Salvar o arquivo .parquet na pasta do repositório
         run: |
+          git lfs install
+          git lfs track "dados/*.parquet"
+          git add .gitattributes
           git config --local user.name "github-actions[bot]"
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git add dados/*.parquet
-          
-          # Tenta comitar os dados. Se não houver dados novos, ele não quebra o robô.
-          git commit -m "🤖 [Auto] Dados mensais da Balança Comercial atualizados" || echo "Nenhuma mudança nos dados para comitar."
+          git commit -m "🤖 [Auto] Dados mensais da Balança Comercial" || echo "Sem mudanças"
           git push
