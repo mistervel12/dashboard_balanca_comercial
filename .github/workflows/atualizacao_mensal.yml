@@ -45,8 +45,8 @@ jobs:
           git lfs install
           git lfs track "dados/*.parquet"
           git add .gitattributes
-          git config --local user.name "github-actions[bot]"
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "mistervel12"
+          git config --local user.email "williamcutrim9@gmail.com"
           git add dados/*.parquet
           git commit -m "🤖 [Auto] Dados mensais da Balança Comercial" || echo "Sem mudanças"
-          git push
+          git push https://${{ secrets.MEU_PAT_GITHUB }}@github.com/mistervel12/dashboard_balanca_comercial.git HEAD:master
