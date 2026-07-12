@@ -71,6 +71,7 @@ shiny::img(src = "www/logo_itaqui.jpeg", width = "80%", height = "auto", style =
 
 shiny::br() # adiciona uma quebra de linha
 
+
 ```
 
 
@@ -351,6 +352,7 @@ output$tabelaBrasil_Maranhao <- DT::renderDT({
 })
 
 
+
 ```
 
 
@@ -490,6 +492,8 @@ tooltip <- list(
 
 output$balanca_2014_2026 <- highcharter::renderHighchart({
   
+ano_maximo <- max(acumulado_reativo()$ano, na.rm = TRUE)
+
 acumulado1 <- 
 acumulado_reativo() |> 
   dplyr::select(!c(mes, nome_mes)) |> 
@@ -511,7 +515,7 @@ dplyr::mutate(
     )
   ) |> 
   tidyr::complete(
-    ano = 2014:2026,
+    ano = 2014:ano_maximo, # Deixando dinâmico
     uf,
     balanca,
     fill = list(valor = NA)
@@ -576,7 +580,7 @@ tooltip <- list(
       title = list(text = "Ano")
     ) |> 
   highcharter::hc_title(
-    text = paste("Evolução da balança comercial anual (2014-2026) do", 
+    text = paste0("Evolução da balança comercial anual (2014-", ano_maximo, ") do ", 
                  input$SelecaoUF, ", valores ",
                  extrair_texto_entre_parenteses(input$variavelY)),
     style = list(fontSize = "20px", fontWeight = "bold")) |> 
@@ -588,6 +592,7 @@ tooltip <- list(
 
 
 })
+
 ```
 
 
@@ -602,7 +607,6 @@ ncm_exportacao_agrupado <- dplyr::bind_rows(
     #Maranhão
     ncm_exportacao_reativo() |>
       collect() |> 
-      # ncm_exportacao |>
       dplyr::filter(
         no_uf == "Maranhão" 
       ) |>
@@ -616,11 +620,10 @@ ncm_exportacao_agrupado <- dplyr::bind_rows(
     #Nordeste
     ncm_exportacao_reativo() |>
       collect() |> 
-      # ncm_exportacao |>
       dplyr::filter(
           no_regiao == "Nordeste"
       ) |>
-      dplyr::group_by(ano, mes, nome_mes, uf = "Nordeste", no_cuci_grupo) |> # <--- uf = "Nordeste"
+      dplyr::group_by(ano, mes, nome_mes, uf = "Nordeste", no_cuci_grupo) |> 
       dplyr::summarise(
          valor_fob_dolar = sum(valor_fob_dolar, na.rm = TRUE),
          peso_liquido_kg = sum(peso_liquido_kg, na.rm = TRUE),
@@ -630,8 +633,7 @@ ncm_exportacao_agrupado <- dplyr::bind_rows(
     # Brasil
     ncm_exportacao_reativo() |>
       collect() |> 
-      # ncm_exportacao |>
-      dplyr::group_by(ano, mes, nome_mes,uf = "Brasil",  no_cuci_grupo) |> # <--- uf = "Brasil"
+      dplyr::group_by(ano, mes, nome_mes,uf = "Brasil",  no_cuci_grupo) |> 
       dplyr::summarise(
          valor_fob_dolar = sum(valor_fob_dolar, na.rm = TRUE),
          peso_liquido_kg = sum(peso_liquido_kg, na.rm = TRUE),
@@ -640,11 +642,12 @@ ncm_exportacao_agrupado <- dplyr::bind_rows(
   ) |> 
   arrange(mes)
 
+ano_maximo <- max(ncm_exportacao_agrupado$ano, na.rm = TRUE)
+
 lbls <- 
   ncm_exportacao_agrupado |> 
-  dplyr::filter(ano == max(ano) & 
+  dplyr::filter(ano == ano_maximo & 
                   uf == input$SelecaoUF
-                  # uf == "Maranhão"
                 ) |> 
   dplyr::group_by(no_cuci_grupo) |> 
   dplyr::summarise(
@@ -657,7 +660,6 @@ lbls <-
       input$variavelY == "Valor (em milhões de dólares)" ~ valor_fob_dolar,
       TRUE ~ peso_liquido_kg
       )
-    # var1 = valor_fob_dolar
     ) |> 
   dplyr::slice_max(var1, n = 8) |> 
   dplyr::select(no_cuci_grupo) |> 
@@ -666,8 +668,7 @@ lbls <-
   
 exp_br_produtos2026 <- 
   ncm_exportacao_agrupado |> 
-  dplyr::filter(ano == max(ano) & no_cuci_grupo %in% lbls & uf == input$SelecaoUF
-                # uf == "Maranhão"
+  dplyr::filter(ano == ano_maximo & no_cuci_grupo %in% lbls & uf == input$SelecaoUF
                 ) |> 
   dplyr::group_by(nome_mes, no_cuci_grupo) |> 
   dplyr::summarise(
@@ -686,20 +687,17 @@ exp_br_produtos2026 |>
     mutate(nome_mes = factor(nome_mes, levels = ordem_meses, ordered = TRUE)) |>
   arrange(nome_mes) |> 
   tidyr::pivot_longer(
-    cols = c(valor_fob_dolar, peso_liquido_kg), # Seleciona as colunas com os valores
-    names_to = "fill", # Nome da nova coluna com os nomes das colunas originais
-    values_to = "valor" # Nome da nova coluna com os valores
+    cols = c(valor_fob_dolar, peso_liquido_kg), 
+    names_to = "fill", 
+    values_to = "valor" 
   ) |>
   tidyr::pivot_wider(
     id_cols = c(nome_mes, fill),
     names_from = no_cuci_grupo,
-    values_from = valor # Usa a coluna "valor" para preencher as novas colunas
+    values_from = valor 
   ) 
 
 
-# cat("Exportações Produtos Antes\n")
-# print(dplyr::glimpse(exp_br_produtos2026))
-#  
 # adicionando linha de total
 exp_br_produtos2026 <-
 exp_br_produtos2026 |> 
@@ -707,7 +705,6 @@ exp_br_produtos2026 |>
     fill ==
       ifelse(input$variavelY == "Valor (em milhões de dólares)",
             "valor_fob_dolar", "peso_liquido_kg")
-     # fill ==  "valor_fob_dolar"
     ) |> 
     janitor::adorn_totals(name = "Total") |> 
     dplyr::select(!fill)
@@ -731,14 +728,13 @@ if ("Total" %in% exp_br_produtos2026$nome_mes) {
 
 ######### TABELA ########################################
   # Criando o título e a legenda
-  # Criando o título e a legenda
  titulo <- htmltools::tags$caption(
   style = 'caption-side: top; text-align: center; font-size: 20px; font-weight: bold;',
-  htmltools::tags$p("Os principais produtos exportados em ", max(ncm_exportacao_reativo()$ano, na.rm = TRUE))
+  htmltools::tags$p("Os principais produtos exportados em ", ano_maximo)
 )
   legenda <- htmltools::tags$caption(
-    style = 'caption-side: bottom; text-align: left;', # Legenda à esquerda embaixo
-    htmltools::tags$p("Fonte: Secretaria de Comércio Exterior - SECEX (2026)")
+    style = 'caption-side: bottom; text-align: left;', 
+    htmltools::tags$p(paste0("Fonte: Secretaria de Comércio Exterior - SECEX (", ano_maximo, ")"))
   )
 
   # Criando a lista de elementos HTML
@@ -747,34 +743,35 @@ cabecalho <- htmltools::tagList(titulo, legenda)
 exp_br_produtos2026 |>
   DT::datatable(
     options = list(
-      dom = 't', # Remove os controles de busca, paginação, etc.
-      pageLength = -1, # Mostra todas as linhas
+      dom = 't', 
+      pageLength = -1, 
       initComplete = DT::JS(
         "function(settings, json) {
           $(this.api().table().header()).css({'background-color': '#74BBDC', 'color': '#fff'});
         }"
       )
     ),
-    rownames = FALSE, # Remove os números das linhas
-    colnames = c("Mês", colnames(exp_br_produtos2026)[-1]), # Define os nomes das colunas
+    rownames = FALSE, 
+    colnames = c("Mês", colnames(exp_br_produtos2026)[-1]), 
     caption = cabecalho,
-    escape = FALSE # Permite HTML na tabela (para o rodapé estilizado)
+    escape = FALSE 
   ) |>
   DT::formatCurrency(
-    columns = colnames(exp_br_produtos2026)[-1], # Formata todas as colunas menos a primeira
+    columns = colnames(exp_br_produtos2026)[-1], 
     currency = "", mark = ".", dec.mark = ",", digits = 2
   ) |>
   DT::formatStyle(
-    columns = 0:ncol(exp_br_produtos2026), # Aplica o estilo a todas as colunas
+    columns = 0:ncol(exp_br_produtos2026), 
     target = "row",
-    backgroundColor = DT::styleEqual(seq(1, nrow(exp_br_produtos2026), 2), "#f2f2f2") # Cor de fundo alternada
+    backgroundColor = DT::styleEqual(seq(1, nrow(exp_br_produtos2026), 2), "#f2f2f2") 
   ) |>
   DT::formatStyle(
-    columns = 0:ncol(exp_br_produtos2026), # Aplica o estilo a todas as colunas
+    columns = 0:ncol(exp_br_produtos2026), 
     target = "row",
-    fontWeight = DT::styleEqual(nrow(exp_br_produtos2026), "bold") # Última linha em negrito
+    fontWeight = DT::styleEqual(nrow(exp_br_produtos2026), "bold") 
   )  
   })
+
 
 ```
 
@@ -785,13 +782,14 @@ exp_br_produtos2026 |>
 
 output$destinos_2014_2026 <- highcharter::renderHighchart({
   
+ano_maximo <- max(ncm_exportacao_reativo()$ano, na.rm = TRUE)
 
 lbls_decada <- 
   funcao_ncm_agrupado(ncm_exportacao_reativo(), no_pais, "exportação") |> 
   dplyr::select(!c(mes, nome_mes)) |> 
   dplyr::filter(
     uf == input$SelecaoUF &
-    ano >= 2014 & ano <= 2026
+    ano >= 2014 & ano <= ano_maximo
     ) |> 
   dplyr::group_by(no_pais) |> 
   dplyr::summarise(
@@ -803,22 +801,18 @@ lbls_decada <-
               input$variavelY == "Valor (em milhões de dólares)" ~ valor_fob_dolar,
                 TRUE ~ peso_liquido_kg
               )
-            # var1 = valor_fob_dolar
            ) |>
   dplyr::slice_max(var1, n = 5) |> 
   dplyr::select(no_pais) |> 
   dplyr::pull()
 
 
-# cat("Print lbls_decada\n")
-# print(lbls_decada)
-
 exp_pais_2014_2026 <- 
  funcao_ncm_agrupado(ncm_exportacao_reativo(), no_pais, "exportação") |> 
   select(!c(mes, nome_mes))|> 
   dplyr::filter(
     uf == input$SelecaoUF &
-    ano >= 2014 & ano <= 2026 & 
+    ano >= 2014 & ano <= ano_maximo & 
     no_pais %in% lbls_decada
       
     ) |> 
@@ -832,32 +826,22 @@ exp_pais_2014_2026 <-
               input$variavelY == "Valor (em milhões de dólares)" ~ valor_fob_dolar,
                 TRUE ~ peso_liquido_kg
               )
-            # var1 = valor_fob_dolar
            ) 
-
-# cat("Print depois do slice_max\n")
-# print(exp_pais_2014_2026)
-# cat("Nome das colunas\n")
-# print(colnames(exp_pais_2014_2026))
 
 
 exp_pais_2014_2026 <- 
         exp_pais_2014_2026 |>
         dplyr::select(!var1) |> 
         tidyr::pivot_longer(
-            cols = !c(no_pais, ano), # Seleciona as colunas com os valores
-            names_to = "fill", # Nome da nova coluna com os nomes das colunas originais
-            values_to = "valor" # Nome da nova coluna com os valores
+            cols = !c(no_pais, ano), 
+            names_to = "fill", 
+            values_to = "valor" 
         ) |> 
   dplyr::filter(
     fill == ifelse(
           input$variavelY == "Valor (em milhões de dólares)", "valor_fob_dolar", "peso_liquido_kg"
           )
   )
-
-
-# cat("Print de pivot_longer\n")
-# print(exp_pais_2014_2026)
 
 
 ##### TOOLTIP
@@ -885,8 +869,8 @@ highcharter::hchart(
     }"))
     ) |>  
   highcharter::hc_title(
-    text = paste("Os Principais Destinos das Exportações do ", 
-                 input$SelecaoUF, " entre 2014-2026, valores ",
+    text = paste0("Os Principais Destinos das Exportações do ", 
+                 input$SelecaoUF, " entre 2014-", ano_maximo, ", valores ",
                  extrair_texto_entre_parenteses(input$variavelY)),
     style = list(fontSize = "20px", fontWeight = "bold"))  
 
@@ -940,10 +924,11 @@ ncm_importacao_agrupado <- dplyr::bind_rows(
             )
     )
 
+ano_maximo <- max(ncm_importacao_agrupado$ano, na.rm = TRUE)
+
 lbls <- 
   ncm_importacao_agrupado |> 
-  dplyr::filter(ano == max(ano, na.rm = TRUE) & uf == input$SelecaoUF
-                  # uf == "Maranhão"
+  dplyr::filter(ano == ano_maximo & uf == input$SelecaoUF
                 ) |> 
   dplyr::group_by(no_cuci_grupo) |> 
   dplyr::summarise(
@@ -956,7 +941,6 @@ lbls <-
       input$variavelY == "Valor (em milhões de dólares)" ~ valor_fob_dolar,
       TRUE ~ peso_liquido_kg
       )
-    # var1 = valor_fob_dolar
     ) |> 
   dplyr::slice_max(var1, n = 8) |> 
   dplyr::select(no_cuci_grupo) |> 
@@ -965,9 +949,8 @@ lbls <-
   
 imp_br_produtos2026 <- 
   ncm_importacao_agrupado |> 
-  dplyr::filter(ano == max(ano) & no_cuci_grupo %in% lbls & 
+  dplyr::filter(ano == ano_maximo & no_cuci_grupo %in% lbls & 
                 uf == input$SelecaoUF
-                # uf == "Maranhão"
                 ) |> 
   dplyr::group_by(nome_mes, no_cuci_grupo) |> 
   dplyr::summarise(
@@ -987,20 +970,17 @@ imp_br_produtos2026 |>
     mutate(nome_mes = factor(nome_mes, levels = ordem_meses, ordered = TRUE)) |>
   arrange(nome_mes) |> 
   tidyr::pivot_longer(
-    cols = c(valor_fob_dolar, peso_liquido_kg), # Seleciona as colunas com os valores
-    names_to = "fill", # Nome da nova coluna com os nomes das colunas originais
-    values_to = "valor" # Nome da nova coluna com os valores
+    cols = c(valor_fob_dolar, peso_liquido_kg), 
+    names_to = "fill", 
+    values_to = "valor" 
   ) |>
   tidyr::pivot_wider(
     id_cols = c(nome_mes, fill),
     names_from = no_cuci_grupo,
-    values_from = valor # Usa a coluna "valor" para preencher as novas colunas
+    values_from = valor 
   ) 
 
 
-# cat("Importações Produtos Antes\n")
-# print(dplyr::glimpse(Imp_br_produtos2026))
-#  
 # adicionando linha de total
 imp_br_produtos2026 <-
 imp_br_produtos2026 |> 
@@ -1008,7 +988,6 @@ imp_br_produtos2026 |>
     fill ==
       ifelse(input$variavelY == "Valor (em milhões de dólares)",
             "valor_fob_dolar", "peso_liquido_kg")
-     # fill ==  "valor_fob_dolar"
     ) |> 
     janitor::adorn_totals(name = "Total") |> 
     dplyr::select(!fill)
@@ -1026,19 +1005,16 @@ if ("Total" %in% imp_br_produtos2026$nome_mes) {
    imp_br_produtos2026 <- imp_br_produtos2026[, c("nome_mes", colunas_ordenadas)]
 
    }
-# cat("Importações Produtos Depois\n")
-# print(dplyr::glimpse(imp_br_produtos2026))
 
 ######### TABELA ########################################
   # Criando o título e a legenda
-  # Criando o título e a legenda
   titulo <- htmltools::tags$caption(
   style = 'caption-side: top; text-align: center; font-size: 20px; font-weight: bold;',
-  htmltools::tags$p("Os principais produtos importados em ", max(ncm_importacao_reativo()$ano, na.rm = TRUE))
+  htmltools::tags$p("Os principais produtos importados em ", ano_maximo)
 )
   legenda <- htmltools::tags$caption(
-    style = 'caption-side: bottom; text-align: left;', # Legenda à esquerda embaixo
-    htmltools::tags$p("Fonte: Secretaria de Comércio Exterior - SECEX (2026)")
+    style = 'caption-side: bottom; text-align: left;', 
+    htmltools::tags$p(paste0("Fonte: Secretaria de Comércio Exterior - SECEX (", ano_maximo, ")"))
   )
 
   # Criando a lista de elementos HTML
@@ -1047,32 +1023,32 @@ cabecalho <- htmltools::tagList(titulo, legenda)
 imp_br_produtos2026 |>
   DT::datatable(
     options = list(
-      dom = 't', # Remove os controles de busca, paginação, etc.
-      pageLength = -1, # Mostra todas as linhas
+      dom = 't', 
+      pageLength = -1, 
       initComplete = DT::JS(
         "function(settings, json) {
           $(this.api().table().header()).css({'background-color': '#74BBDC', 'color': '#fff'});
         }"
       )
     ),
-    rownames = FALSE, # Remove os números das linhas
-    colnames = c("Mês", colnames(imp_br_produtos2026)[-1]), # Define os nomes das colunas
+    rownames = FALSE, 
+    colnames = c("Mês", colnames(imp_br_produtos2026)[-1]), 
     caption = cabecalho,
-    escape = FALSE # Permite HTML na tabela (para o rodapé estilizado)
+    escape = FALSE 
   ) |>
   DT::formatCurrency(
-    columns = colnames(imp_br_produtos2026)[-1], # Formata todas as colunas menos a primeira
+    columns = colnames(imp_br_produtos2026)[-1], 
     currency = "", mark = ".", dec.mark = ",", digits = 2
   ) |>
   DT::formatStyle(
-    columns = 0:ncol(imp_br_produtos2026), # Aplica o estilo a todas as colunas
+    columns = 0:ncol(imp_br_produtos2026), 
     target = "row",
-    backgroundColor = DT::styleEqual(seq(1, nrow(imp_br_produtos2026), 2), "#f2f2f2") # Cor de fundo alternada
+    backgroundColor = DT::styleEqual(seq(1, nrow(imp_br_produtos2026), 2), "#f2f2f2") 
   ) |>
   DT::formatStyle(
-    columns = 0:ncol(imp_br_produtos2026), # Aplica o estilo a todas as colunas
+    columns = 0:ncol(imp_br_produtos2026), 
     target = "row",
-    fontWeight = DT::styleEqual(nrow(imp_br_produtos2026), "bold") # Última linha em negrito
+    fontWeight = DT::styleEqual(nrow(imp_br_produtos2026), "bold") 
   )  
   })
 
@@ -1102,14 +1078,14 @@ imp_br_produtos2026 |>
 
 output$origens_2014_2026 <- highcharter::renderHighchart({
   
-
+ano_maximo <- max(ncm_importacao_reativo()$ano, na.rm = TRUE)
 
 lbls_decada <- 
   funcao_ncm_agrupado(ncm_importacao_reativo(), no_pais, "importação") |> 
   dplyr::select(!c(mes, nome_mes)) |> 
   dplyr::filter(
     uf == input$SelecaoUF &
-    ano >= 2014 & ano <= 2026
+    ano >= 2014 & ano <= ano_maximo
     ) |> 
   dplyr::group_by(no_pais) |> 
   dplyr::summarise(
@@ -1121,15 +1097,10 @@ lbls_decada <-
               input$variavelY == "Valor (em milhões de dólares)" ~ valor_fob_dolar,
                 TRUE ~ peso_liquido_kg
               )
-            # var1 = valor_fob_dolar
            ) |>
   dplyr::slice_max(var1, n = 5) |> 
   dplyr::select(no_pais) |> 
   dplyr::pull()
-
-
-# cat("Print lbls_decada\n")
-# print(lbls_decada)
 
 
 imp_pais_2014_2026 <- 
@@ -1137,7 +1108,7 @@ imp_pais_2014_2026 <-
   select(!c(mes, nome_mes))|> 
   dplyr::filter(
     uf == input$SelecaoUF &
-    ano >= 2014 & ano <= 2026 & 
+    ano >= 2014 & ano <= ano_maximo & 
     no_pais %in% lbls_decada
       
     ) |> 
@@ -1151,32 +1122,22 @@ imp_pais_2014_2026 <-
               input$variavelY == "Valor (em milhões de dólares)" ~ valor_fob_dolar,
                 TRUE ~ peso_liquido_kg
               )
-            # var1 = valor_fob_dolar
            ) 
-
-# cat("Print depois do slice_max\n")
-# print(imp_pais_2014_2026)
-# cat("Nome das colunas\n")
-# print(colnames(imp_pais_2014_2026))
 
 
 imp_pais_2014_2026 <- 
         imp_pais_2014_2026 |>
         dplyr::select(!var1) |> 
         tidyr::pivot_longer(
-            cols = !c(no_pais, ano), # Seleciona as colunas com os valores
-            names_to = "fill", # Nome da nova coluna com os nomes das colunas originais
-            values_to = "valor" # Nome da nova coluna com os valores
+            cols = !c(no_pais, ano), 
+            names_to = "fill", 
+            values_to = "valor" 
         ) |> 
   dplyr::filter(
     fill == ifelse(
           input$variavelY == "Valor (em milhões de dólares)", "valor_fob_dolar", "peso_liquido_kg"
           )
   )
-
-
-# cat("Print de pivot_longer\n")
-# print(imp_pais_2014_2026)
 
 
 ##### TOOLTIP
@@ -1205,12 +1166,11 @@ highcharter::hchart(
     }"))
     ) |>
   highcharter::hc_title(
-    text = paste("As Principais Origens das Importações do ", 
-                 input$SelecaoUF, " entre 2014-2026, valores ",
+    text = paste0("As Principais Origens das Importações do ", 
+                 input$SelecaoUF, " entre 2014-", ano_maximo, ", valores ",
                  extrair_texto_entre_parenteses(input$variavelY)),
     style = list(fontSize = "20px", fontWeight = "bold")) 
 
 
 })
 ```
-
