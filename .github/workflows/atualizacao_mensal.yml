@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: 📥 Clonar o repositório
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.MEU_PAT_GITHUB }}
 
       - name: 🧹 Ignorar o renv temporariamente na nuvem
         run: rm -f .Rprofile
