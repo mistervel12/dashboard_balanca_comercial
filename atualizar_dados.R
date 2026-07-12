@@ -1,17 +1,20 @@
 # ==============================================================================
-# ROBÔ DE ATUALIZAÇÃO DE DADOS - BALANÇA COMERCIAL (CORTES INTELIGENTES)
+# PIPELINE ETL: ATUALIZAÇÃO DA BALANÇA COMERCIAL
+# Descrição: Script responsável por conectar ao Google Cloud, extrair o 
+#            histórico de importações/exportações, processar strings e 
+#            salvar os dados otimizados no formato .parquet localmente.
 # ==============================================================================
 
 library(basedosdados)
 library(dplyr)
 library(arrow)
 
-# 1. Conectando ao seu projeto no Google Cloud
+# 1. Conectando ao projeto no Google Cloud
 set_billing_id("automacao-dashboard-502016")
 
-print("Iniciando extração, tradução e resumo de nomes... (1 a 2 min)")
+print("Iniciando rotina de extração e processamento de dados...")
 
-# 2. Consulta para EXPORTAÇÕES (Com SPLIT para resumir os nomes)
+# 2. Consulta para EXPORTAÇÕES (Com SPLIT para resumir as nomenclaturas dos produtos)
 query_exportacao <- "
   SELECT 
     t.ano,
@@ -36,7 +39,7 @@ query_exportacao <- "
   GROUP BY t.ano, t.mes, no_uf, no_regiao, no_pais, no_cuci_grupo
 "
 
-# 3. Consulta para IMPORTAÇÕES (Com SPLIT para resumir os nomes)
+# 3. Consulta para IMPORTAÇÕES (Com SPLIT para resumir as nomenclaturas dos produtos)
 query_importacao <- "
   SELECT 
     t.ano,
@@ -62,10 +65,10 @@ query_importacao <- "
 "
 
 # 4. Executando as consultas
-print("Baixando dados de Exportação (aplicando algoritmos de texto)...")
+print("Baixando dados de Exportação ")
 dados_exp <- read_sql(query_exportacao)
 
-print("Baixando dados de Importação (aplicando algoritmos de texto)...")
+print("Baixando dados de Importação ")
 dados_imp <- read_sql(query_importacao)
 
 # 5. Transformação final
@@ -89,4 +92,4 @@ print("Salvando arquivos na pasta local 'dados/'...")
 write_parquet(dados_exp, "dados/ncm_exportacao_agrupado.parquet")
 write_parquet(dados_imp, "dados/ncm_importacao_agrupado.parquet")
 
-print("✅ SUCESSO! Textos resumidos prontos para o Dashboard!")
+print("Processamento concluído. Arquivos atualizados com sucesso.")
