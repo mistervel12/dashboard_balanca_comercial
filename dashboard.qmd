@@ -94,7 +94,7 @@ highcharter::highchartOutput("balanca_2anos")
 ## Row
 ```{r}
 #|panel: fill
-highcharter::highchartOutput("balanca_2014_2024") 
+highcharter::highchartOutput("balanca_2014_2026") 
 ```
 
 
@@ -102,7 +102,7 @@ highcharter::highchartOutput("balanca_2014_2024")
 
 ```{r}
 #|panel: fill
-DT::DTOutput("tabela_Exp_Prod2024")
+DT::DTOutput("tabela_Exp_Prod2026")
 ```
 
 
@@ -110,15 +110,15 @@ DT::DTOutput("tabela_Exp_Prod2024")
 
 ```{r}
 #| panel: fill
-#| label: "ui_destinos_2014_2024"
-highcharter::highchartOutput("destinos_2014_2024") 
+#| label: "ui_destinos_2014_2026"
+highcharter::highchartOutput("destinos_2014_2026") 
 ```
 
 # Importações
 
 ```{r}
 #|panel: fill
-DT::DTOutput("tabela_Imp_Prod2024")
+DT::DTOutput("tabela_Imp_Prod2026")
 
 ```
 
@@ -126,8 +126,8 @@ DT::DTOutput("tabela_Imp_Prod2024")
 
 ```{r}
 #| panel: fill
-#| label: "ui_origens_2014_2024"
-highcharter::highchartOutput("origens_2014_2024") 
+#| label: "ui_origens_2014_2026"
+highcharter::highchartOutput("origens_2014_2026") 
 ```
 # O Porto
 
@@ -290,9 +290,13 @@ funcao_ncm_agrupado  <- function(dados, coluna_agrupamento, tipo) {
 
 output$tabelaBrasil_Maranhao <- DT::renderDT({
   
+  # 1. Descobre automaticamente qual é o ano mais recente dos dados
+  ano_maximo <- max(acumulado_reativo()$ano, na.rm = TRUE)
+  
+  # 2. Usa esse ano máximo no filtro
   dados_filtrados <-
     acumulado_reativo() |>
-    dplyr::filter(ano == 2024 & uf == input$SelecaoUF) |>
+    dplyr::filter(ano == ano_maximo & uf == input$SelecaoUF) |>
     dplyr::mutate(mes = as.character(mes)) |>
     dplyr::select(!c(ano, mes, uf))
   
@@ -300,6 +304,7 @@ output$tabelaBrasil_Maranhao <- DT::renderDT({
     dados_filtrados |> 
     janitor::adorn_totals() |>
     dplyr::mutate(nome_mes = dplyr::if_else(nome_mes == "-", "Total", nome_mes)) 
+
 
   
   DT::datatable(
@@ -320,8 +325,9 @@ output$tabelaBrasil_Maranhao <- DT::renderDT({
     colnames = c("Mês", "Exportações", "Importações", "Saldo", "Corrente"),
     caption = htmltools::tags$caption(
       style = 'font-size: 20px; font-weight: bold; caption-side: top; text-align: center;',
-      htmltools::tags$p("Balança Comercial de 2024 do ", input$SelecaoUF, ", valores ", extrair_texto_entre_parenteses(input$variavelY))
-    ) 
+      # O R vai colar o número real do ano aqui:
+      htmltools::tags$p("Balança Comercial de ", ano_maximo, " do ", input$SelecaoUF, ", valores ", extrair_texto_entre_parenteses(input$variavelY))
+    )
   ) |>
     DT::formatCurrency(
       c("exp_valor", "imp_valor", "saldo", "corrente"),
@@ -383,7 +389,7 @@ acumulado1 <-
  acumulado1 |>  dplyr::filter(uf == input$SelecaoUF) 
 
   # Verificando os dados
-  # cat("Tabela Balança 2024\n")
+  # cat("Tabela Balança 2026\n")
   # print(acumulado1) # Imprime os dados filtrados
   # str(acumulado1) 
 
@@ -480,9 +486,9 @@ tooltip <- list(
 
 ```{r}
 #| context: server
-#| label: fig-balanca_2014_2024
+#| label: fig-balanca_2014_2026
 
-output$balanca_2014_2024 <- highcharter::renderHighchart({
+output$balanca_2014_2026 <- highcharter::renderHighchart({
   
 acumulado1 <- 
 acumulado_reativo() |> 
@@ -505,7 +511,7 @@ dplyr::mutate(
     )
   ) |> 
   tidyr::complete(
-    ano = 2014:2024,
+    ano = 2014:2026,
     uf,
     balanca,
     fill = list(valor = NA)
@@ -570,7 +576,7 @@ tooltip <- list(
       title = list(text = "Ano")
     ) |> 
   highcharter::hc_title(
-    text = paste("Evolução da balança comercial anual (2014-2024) do", 
+    text = paste("Evolução da balança comercial anual (2014-2026) do", 
                  input$SelecaoUF, ", valores ",
                  extrair_texto_entre_parenteses(input$variavelY)),
     style = list(fontSize = "20px", fontWeight = "bold")) |> 
@@ -587,9 +593,9 @@ tooltip <- list(
 
 ```{r}
 #| context: server
-#| label: "exportacoes_prod_2024"
+#| label: "exportacoes_prod_2026"
 
-output$tabela_Exp_Prod2024 <- DT::renderDT({
+output$tabela_Exp_Prod2026 <- DT::renderDT({
   
  ############# DADOS ################ 
 ncm_exportacao_agrupado <- dplyr::bind_rows(
@@ -636,7 +642,7 @@ ncm_exportacao_agrupado <- dplyr::bind_rows(
 
 lbls <- 
   ncm_exportacao_agrupado |> 
-  dplyr::filter(ano == 2024 & 
+  dplyr::filter(ano == max(ano) & 
                   uf == input$SelecaoUF
                   # uf == "Maranhão"
                 ) |> 
@@ -658,10 +664,9 @@ lbls <-
   dplyr::pull()
 
   
-exp_br_produtos2024 <- 
+exp_br_produtos2026 <- 
   ncm_exportacao_agrupado |> 
-  dplyr::filter(ano == 2024 & no_cuci_grupo %in% lbls & 
-                uf == input$SelecaoUF
+  dplyr::filter(ano == max(ano) & no_cuci_grupo %in% lbls & uf == input$SelecaoUF
                 # uf == "Maranhão"
                 ) |> 
   dplyr::group_by(nome_mes, no_cuci_grupo) |> 
@@ -676,8 +681,8 @@ exp_br_produtos2024 <-
 ordem_meses <- c("jan.", "fev.", "mar.", "abr.", "maio", "jun.", 
                  "jul.", "ago.", "set.", "out.", "nov.", "dez.")
 
-exp_br_produtos2024 <- 
-exp_br_produtos2024 |>
+exp_br_produtos2026 <- 
+exp_br_produtos2026 |>
     mutate(nome_mes = factor(nome_mes, levels = ordem_meses, ordered = TRUE)) |>
   arrange(nome_mes) |> 
   tidyr::pivot_longer(
@@ -693,11 +698,11 @@ exp_br_produtos2024 |>
 
 
 # cat("Exportações Produtos Antes\n")
-# print(dplyr::glimpse(exp_br_produtos2024))
+# print(dplyr::glimpse(exp_br_produtos2026))
 #  
 # adicionando linha de total
-exp_br_produtos2024 <-
-exp_br_produtos2024 |> 
+exp_br_produtos2026 <-
+exp_br_produtos2026 |> 
   dplyr::filter(
     fill ==
       ifelse(input$variavelY == "Valor (em milhões de dólares)",
@@ -710,15 +715,15 @@ exp_br_produtos2024 |>
 
 
   # Reordenar colunas baseado na linha 'Total'
-if ("Total" %in% exp_br_produtos2024$nome_mes) {
+if ("Total" %in% exp_br_produtos2026$nome_mes) {
   # Encontra a linha do Total
-  total_row_index <- which(exp_br_produtos2024$nome_mes == "Total")
+  total_row_index <- which(exp_br_produtos2026$nome_mes == "Total")
   
   # Extrai os valores (excluindo a coluna nome_mes) e ordena
-  total_values <- exp_br_produtos2024[total_row_index, -1]
+  total_values <- exp_br_produtos2026[total_row_index, -1]
   colunas_ordenadas <- names(total_values)[order(as.numeric(total_values), decreasing = TRUE)]
   
-   exp_br_produtos2024 <- exp_br_produtos2024[, c("nome_mes", colunas_ordenadas)]
+   exp_br_produtos2026 <- exp_br_produtos2026[, c("nome_mes", colunas_ordenadas)]
 
    }
 
@@ -727,19 +732,19 @@ if ("Total" %in% exp_br_produtos2024$nome_mes) {
 ######### TABELA ########################################
   # Criando o título e a legenda
   # Criando o título e a legenda
-  titulo <- htmltools::tags$caption(
-    style = 'caption-side: top; text-align: center; font-size: 20px; font-weight: bold;', # Título centralizado em cima
-    htmltools::tags$p("Os principais produtos exportados em 2024")
-  )
+ titulo <- htmltools::tags$caption(
+  style = 'caption-side: top; text-align: center; font-size: 20px; font-weight: bold;',
+  htmltools::tags$p("Os principais produtos exportados em ", max(ncm_exportacao_reativo()$ano, na.rm = TRUE))
+)
   legenda <- htmltools::tags$caption(
     style = 'caption-side: bottom; text-align: left;', # Legenda à esquerda embaixo
-    htmltools::tags$p("Fonte: Secretaria de Comércio Exterior - SECEX (2024)")
+    htmltools::tags$p("Fonte: Secretaria de Comércio Exterior - SECEX (2026)")
   )
 
   # Criando a lista de elementos HTML
 cabecalho <- htmltools::tagList(titulo, legenda)
   
-exp_br_produtos2024 |>
+exp_br_produtos2026 |>
   DT::datatable(
     options = list(
       dom = 't', # Remove os controles de busca, paginação, etc.
@@ -751,23 +756,23 @@ exp_br_produtos2024 |>
       )
     ),
     rownames = FALSE, # Remove os números das linhas
-    colnames = c("Mês", colnames(exp_br_produtos2024)[-1]), # Define os nomes das colunas
+    colnames = c("Mês", colnames(exp_br_produtos2026)[-1]), # Define os nomes das colunas
     caption = cabecalho,
     escape = FALSE # Permite HTML na tabela (para o rodapé estilizado)
   ) |>
   DT::formatCurrency(
-    columns = colnames(exp_br_produtos2024)[-1], # Formata todas as colunas menos a primeira
+    columns = colnames(exp_br_produtos2026)[-1], # Formata todas as colunas menos a primeira
     currency = "", mark = ".", dec.mark = ",", digits = 2
   ) |>
   DT::formatStyle(
-    columns = 0:ncol(exp_br_produtos2024), # Aplica o estilo a todas as colunas
+    columns = 0:ncol(exp_br_produtos2026), # Aplica o estilo a todas as colunas
     target = "row",
-    backgroundColor = DT::styleEqual(seq(1, nrow(exp_br_produtos2024), 2), "#f2f2f2") # Cor de fundo alternada
+    backgroundColor = DT::styleEqual(seq(1, nrow(exp_br_produtos2026), 2), "#f2f2f2") # Cor de fundo alternada
   ) |>
   DT::formatStyle(
-    columns = 0:ncol(exp_br_produtos2024), # Aplica o estilo a todas as colunas
+    columns = 0:ncol(exp_br_produtos2026), # Aplica o estilo a todas as colunas
     target = "row",
-    fontWeight = DT::styleEqual(nrow(exp_br_produtos2024), "bold") # Última linha em negrito
+    fontWeight = DT::styleEqual(nrow(exp_br_produtos2026), "bold") # Última linha em negrito
   )  
   })
 
@@ -776,9 +781,9 @@ exp_br_produtos2024 |>
 
 ```{r}
 #| context: server
-#| label: "server_destinos_2014_2024"
+#| label: "server_destinos_2014_2026"
 
-output$destinos_2014_2024 <- highcharter::renderHighchart({
+output$destinos_2014_2026 <- highcharter::renderHighchart({
   
 
 lbls_decada <- 
@@ -786,7 +791,7 @@ lbls_decada <-
   dplyr::select(!c(mes, nome_mes)) |> 
   dplyr::filter(
     uf == input$SelecaoUF &
-    ano >= 2014 & ano <= 2024
+    ano >= 2014 & ano <= 2026
     ) |> 
   dplyr::group_by(no_pais) |> 
   dplyr::summarise(
@@ -808,12 +813,12 @@ lbls_decada <-
 # cat("Print lbls_decada\n")
 # print(lbls_decada)
 
-exp_pais_2014_2024 <- 
+exp_pais_2014_2026 <- 
  funcao_ncm_agrupado(ncm_exportacao_reativo(), no_pais, "exportação") |> 
   select(!c(mes, nome_mes))|> 
   dplyr::filter(
     uf == input$SelecaoUF &
-    ano >= 2014 & ano <= 2024 & 
+    ano >= 2014 & ano <= 2026 & 
     no_pais %in% lbls_decada
       
     ) |> 
@@ -831,13 +836,13 @@ exp_pais_2014_2024 <-
            ) 
 
 # cat("Print depois do slice_max\n")
-# print(exp_pais_2014_2024)
+# print(exp_pais_2014_2026)
 # cat("Nome das colunas\n")
-# print(colnames(exp_pais_2014_2024))
+# print(colnames(exp_pais_2014_2026))
 
 
-exp_pais_2014_2024 <- 
-        exp_pais_2014_2024 |>
+exp_pais_2014_2026 <- 
+        exp_pais_2014_2026 |>
         dplyr::select(!var1) |> 
         tidyr::pivot_longer(
             cols = !c(no_pais, ano), # Seleciona as colunas com os valores
@@ -852,7 +857,7 @@ exp_pais_2014_2024 <-
 
 
 # cat("Print de pivot_longer\n")
-# print(exp_pais_2014_2024)
+# print(exp_pais_2014_2026)
 
 
 ##### TOOLTIP
@@ -865,7 +870,7 @@ tooltip <- list(
 )
 
 highcharter::hchart(
-  exp_pais_2014_2024, "line", 
+  exp_pais_2014_2026, "line", 
   hcaes(x = ano, y = valor, group = no_pais),
   tooltip = tooltip
   ) |>
@@ -881,7 +886,7 @@ highcharter::hchart(
     ) |>  
   highcharter::hc_title(
     text = paste("Os Principais Destinos das Exportações do ", 
-                 input$SelecaoUF, " entre 2014-2024, valores ",
+                 input$SelecaoUF, " entre 2014-2026, valores ",
                  extrair_texto_entre_parenteses(input$variavelY)),
     style = list(fontSize = "20px", fontWeight = "bold"))  
 
@@ -892,13 +897,12 @@ highcharter::hchart(
 
 ```{r}
 #| context: server
-#| label: "importacoes_prod_2024"
+#| label: "importacoes_prod_2026"
 
-output$tabela_Imp_Prod2024 <- DT::renderDT({
+output$tabela_Imp_Prod2026 <- DT::renderDT({
   
  ############# DADOS ################ 
-ncm_importacao_agrupado <- 
- ncm_importacao_agrupado <- dplyr::bind_rows( 
+ncm_importacao_agrupado <- dplyr::bind_rows( 
         #Maranhão
         ncm_importacao_reativo() |>
           collect() |> 
@@ -937,9 +941,8 @@ ncm_importacao_agrupado <-
     )
 
 lbls <- 
-  funcao_ncm_agrupado(ncm_importacao_reativo(), no_cuci_grupo, "importacao") |> 
-  dplyr::filter(ano == 2024 & 
-                  uf == input$SelecaoUF
+  ncm_importacao_agrupado |> 
+  dplyr::filter(ano == max(ano, na.rm = TRUE) & uf == input$SelecaoUF
                   # uf == "Maranhão"
                 ) |> 
   dplyr::group_by(no_cuci_grupo) |> 
@@ -960,9 +963,9 @@ lbls <-
   dplyr::pull()
 
   
-imp_br_produtos2024 <- 
+imp_br_produtos2026 <- 
   ncm_importacao_agrupado |> 
-  dplyr::filter(ano == 2024 & no_cuci_grupo %in% lbls & 
+  dplyr::filter(ano == max(ano) & no_cuci_grupo %in% lbls & 
                 uf == input$SelecaoUF
                 # uf == "Maranhão"
                 ) |> 
@@ -979,8 +982,8 @@ ordem_meses <- c("jan.", "fev.", "mar.", "abr.", "maio", "jun.",
                  "jul.", "ago.", "set.", "out.", "nov.", "dez.")
 
 
-imp_br_produtos2024 <- 
-imp_br_produtos2024 |>
+imp_br_produtos2026 <- 
+imp_br_produtos2026 |>
     mutate(nome_mes = factor(nome_mes, levels = ordem_meses, ordered = TRUE)) |>
   arrange(nome_mes) |> 
   tidyr::pivot_longer(
@@ -996,11 +999,11 @@ imp_br_produtos2024 |>
 
 
 # cat("Importações Produtos Antes\n")
-# print(dplyr::glimpse(Imp_br_produtos2024))
+# print(dplyr::glimpse(Imp_br_produtos2026))
 #  
 # adicionando linha de total
-imp_br_produtos2024 <-
-imp_br_produtos2024 |> 
+imp_br_produtos2026 <-
+imp_br_produtos2026 |> 
   dplyr::filter(
     fill ==
       ifelse(input$variavelY == "Valor (em milhões de dólares)",
@@ -1012,36 +1015,36 @@ imp_br_produtos2024 |>
 
 
 # Reordenar colunas baseado na linha 'Total'
-if ("Total" %in% imp_br_produtos2024$nome_mes) {
+if ("Total" %in% imp_br_produtos2026$nome_mes) {
   # Encontra a linha do Total
-  total_row_index <- which(imp_br_produtos2024$nome_mes == "Total")
+  total_row_index <- which(imp_br_produtos2026$nome_mes == "Total")
   
   # Extrai os valores (excluindo a coluna nome_mes) e ordena
-  total_values <- imp_br_produtos2024[total_row_index, -1]
+  total_values <- imp_br_produtos2026[total_row_index, -1]
   colunas_ordenadas <- names(total_values)[order(as.numeric(total_values), decreasing = TRUE)]
   
-   imp_br_produtos2024 <- imp_br_produtos2024[, c("nome_mes", colunas_ordenadas)]
+   imp_br_produtos2026 <- imp_br_produtos2026[, c("nome_mes", colunas_ordenadas)]
 
    }
 # cat("Importações Produtos Depois\n")
-# print(dplyr::glimpse(imp_br_produtos2024))
+# print(dplyr::glimpse(imp_br_produtos2026))
 
 ######### TABELA ########################################
   # Criando o título e a legenda
   # Criando o título e a legenda
   titulo <- htmltools::tags$caption(
-    style = 'caption-side: top; text-align: center; font-size: 20px; font-weight: bold;', # Título centralizado em cima
-    htmltools::tags$p("Os principais produtos importados em 2024")
-  )
+  style = 'caption-side: top; text-align: center; font-size: 20px; font-weight: bold;',
+  htmltools::tags$p("Os principais produtos importados em ", max(ncm_importacao_reativo()$ano, na.rm = TRUE))
+)
   legenda <- htmltools::tags$caption(
     style = 'caption-side: bottom; text-align: left;', # Legenda à esquerda embaixo
-    htmltools::tags$p("Fonte: Secretaria de Comércio Exterior - SECEX (2024)")
+    htmltools::tags$p("Fonte: Secretaria de Comércio Exterior - SECEX (2026)")
   )
 
   # Criando a lista de elementos HTML
 cabecalho <- htmltools::tagList(titulo, legenda)
   
-imp_br_produtos2024 |>
+imp_br_produtos2026 |>
   DT::datatable(
     options = list(
       dom = 't', # Remove os controles de busca, paginação, etc.
@@ -1053,23 +1056,23 @@ imp_br_produtos2024 |>
       )
     ),
     rownames = FALSE, # Remove os números das linhas
-    colnames = c("Mês", colnames(imp_br_produtos2024)[-1]), # Define os nomes das colunas
+    colnames = c("Mês", colnames(imp_br_produtos2026)[-1]), # Define os nomes das colunas
     caption = cabecalho,
     escape = FALSE # Permite HTML na tabela (para o rodapé estilizado)
   ) |>
   DT::formatCurrency(
-    columns = colnames(imp_br_produtos2024)[-1], # Formata todas as colunas menos a primeira
+    columns = colnames(imp_br_produtos2026)[-1], # Formata todas as colunas menos a primeira
     currency = "", mark = ".", dec.mark = ",", digits = 2
   ) |>
   DT::formatStyle(
-    columns = 0:ncol(imp_br_produtos2024), # Aplica o estilo a todas as colunas
+    columns = 0:ncol(imp_br_produtos2026), # Aplica o estilo a todas as colunas
     target = "row",
-    backgroundColor = DT::styleEqual(seq(1, nrow(imp_br_produtos2024), 2), "#f2f2f2") # Cor de fundo alternada
+    backgroundColor = DT::styleEqual(seq(1, nrow(imp_br_produtos2026), 2), "#f2f2f2") # Cor de fundo alternada
   ) |>
   DT::formatStyle(
-    columns = 0:ncol(imp_br_produtos2024), # Aplica o estilo a todas as colunas
+    columns = 0:ncol(imp_br_produtos2026), # Aplica o estilo a todas as colunas
     target = "row",
-    fontWeight = DT::styleEqual(nrow(imp_br_produtos2024), "bold") # Última linha em negrito
+    fontWeight = DT::styleEqual(nrow(imp_br_produtos2026), "bold") # Última linha em negrito
   )  
   })
 
@@ -1095,9 +1098,9 @@ imp_br_produtos2024 |>
 
 ```{r}
 #| context: server
-#| label: "server_origens_2014_2024"
+#| label: "server_origens_2014_2026"
 
-output$origens_2014_2024 <- highcharter::renderHighchart({
+output$origens_2014_2026 <- highcharter::renderHighchart({
   
 
 
@@ -1106,7 +1109,7 @@ lbls_decada <-
   dplyr::select(!c(mes, nome_mes)) |> 
   dplyr::filter(
     uf == input$SelecaoUF &
-    ano >= 2014 & ano <= 2024
+    ano >= 2014 & ano <= 2026
     ) |> 
   dplyr::group_by(no_pais) |> 
   dplyr::summarise(
@@ -1129,12 +1132,12 @@ lbls_decada <-
 # print(lbls_decada)
 
 
-imp_pais_2014_2024 <- 
+imp_pais_2014_2026 <- 
  funcao_ncm_agrupado(ncm_importacao_reativo(), no_pais, "importação") |> 
   select(!c(mes, nome_mes))|> 
   dplyr::filter(
     uf == input$SelecaoUF &
-    ano >= 2014 & ano <= 2024 & 
+    ano >= 2014 & ano <= 2026 & 
     no_pais %in% lbls_decada
       
     ) |> 
@@ -1152,13 +1155,13 @@ imp_pais_2014_2024 <-
            ) 
 
 # cat("Print depois do slice_max\n")
-# print(imp_pais_2014_2024)
+# print(imp_pais_2014_2026)
 # cat("Nome das colunas\n")
-# print(colnames(imp_pais_2014_2024))
+# print(colnames(imp_pais_2014_2026))
 
 
-imp_pais_2014_2024 <- 
-        imp_pais_2014_2024 |>
+imp_pais_2014_2026 <- 
+        imp_pais_2014_2026 |>
         dplyr::select(!var1) |> 
         tidyr::pivot_longer(
             cols = !c(no_pais, ano), # Seleciona as colunas com os valores
@@ -1173,7 +1176,7 @@ imp_pais_2014_2024 <-
 
 
 # cat("Print de pivot_longer\n")
-# print(imp_pais_2014_2024)
+# print(imp_pais_2014_2026)
 
 
 ##### TOOLTIP
@@ -1187,7 +1190,7 @@ tooltip <- list(
 
 
 highcharter::hchart(
-  imp_pais_2014_2024, "line", 
+  imp_pais_2014_2026, "line", 
   hcaes(x = ano, y = valor, group = no_pais),
   tooltip = tooltip
   ) |>
@@ -1203,7 +1206,7 @@ highcharter::hchart(
     ) |>
   highcharter::hc_title(
     text = paste("As Principais Origens das Importações do ", 
-                 input$SelecaoUF, " entre 2014-2024, valores ",
+                 input$SelecaoUF, " entre 2014-2026, valores ",
                  extrair_texto_entre_parenteses(input$variavelY)),
     style = list(fontSize = "20px", fontWeight = "bold")) 
 
