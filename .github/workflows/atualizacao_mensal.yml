@@ -50,3 +50,4 @@ jobs:
           git add dados/*.parquet
           git commit -m "🤖 [Auto] Dados mensais da Balança Comercial" || echo "Sem mudanças"
           git push https://${{ secrets.MEU_PAT_GITHUB }}@github.com/mistervel12/dashboard_balanca_comercial.git HEAD:master
+          
